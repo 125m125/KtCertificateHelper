@@ -1,4 +1,4 @@
-package de._125m125.kt.certificateHelper.gui.generate;
+package de._125m125.kt.certificateHelper.gui;
 
 import java.io.File;
 

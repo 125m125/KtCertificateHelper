@@ -1,7 +1,6 @@
 package de._125m125.kt.certificateHelper.gui.generate;
 
 import java.awt.BorderLayout;
-import java.awt.EventQueue;
 import java.awt.event.ActionEvent;
 import java.io.File;
 import java.io.IOException;
@@ -19,7 +18,6 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import javax.swing.JButton;
-import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JProgressBar;
@@ -30,27 +28,12 @@ import org.bouncycastle.openssl.PEMParser;
 import org.bouncycastle.operator.OperatorCreationException;
 import org.bouncycastle.pkcs.PKCSException;
 
-import de._125m125.kt.certificateHelper.CertificateHelper;
+import de._125m125.kt.certificateHelper.CertificateUtils;
 import de._125m125.kt.certificateHelper.Permission;
+import de._125m125.kt.certificateHelper.gui.CertificateHelper;
+import de._125m125.kt.certificateHelper.gui.P12LocationChooser;
 
-public class CertificatehelperWindow {
-
-    private JFrame frame;
-
-    /**
-     * Launch the application.
-     */
-    public static void main(final String[] args) {
-        EventQueue.invokeLater(() -> {
-            try {
-                final CertificatehelperWindow window = new CertificatehelperWindow();
-                window.frame.setVisible(true);
-                window.next(null);
-            } catch (final Exception e) {
-                e.printStackTrace();
-            }
-        });
-    }
+public class CertificateGenerator extends JPanel {
 
     private int                     current     = -1;
     private final JPanel[]          panels      = { new ModeSelection(), new ApiPermissions(), new CsrPresenter(),
@@ -73,14 +56,18 @@ public class CertificatehelperWindow {
     private File                    file;
     private KeyPair                 keyPair;
 
-    private final CertificateHelper helper      = new CertificateHelper();
+    private final CertificateUtils  helper      = new CertificateUtils();
+    private final CertificateHelper certificateHelper;
 
     /**
      * Create the application.
      * 
+     * @param certificateHelper
+     * 
      * @wbp.parser.entryPoint
      */
-    public CertificatehelperWindow() {
+    public CertificateGenerator(final CertificateHelper certificateHelper) {
+        this.certificateHelper = certificateHelper;
         initialize();
     }
 
@@ -88,13 +75,10 @@ public class CertificatehelperWindow {
      * Initialize the contents of the frame.
      */
     private void initialize() {
-        this.frame = new JFrame();
-        this.frame.setBounds(100, 100, 450, 300);
-        this.frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        this.frame.getContentPane().setLayout(new BorderLayout(0, 0));
+        setLayout(new BorderLayout());
 
         final JPanel panel_1 = new JPanel();
-        this.frame.getContentPane().add(panel_1, BorderLayout.NORTH);
+        this.add(panel_1, BorderLayout.NORTH);
         panel_1.setLayout(new BorderLayout(0, 0));
 
         this.btnBack = new JButton("Zurück");
@@ -114,10 +98,14 @@ public class CertificatehelperWindow {
             this.center.add(p);
             p.setVisible(false);
         }
-        this.frame.getContentPane().add(this.center);
+        this.add(this.center);
     }
 
     public void next(final ActionEvent e) {
+        if (this.current == 5) {
+            this.certificateHelper.home();
+            return;
+        }
         if (!extractData()) {
             return;
         }
@@ -158,6 +146,10 @@ public class CertificatehelperWindow {
     }
 
     public void previous(final ActionEvent e) {
+        if (this.current == 0) {
+            this.certificateHelper.home();
+            return;
+        }
         this.current--;
         if (this.current == 1 && this.mode != 2) {
             this.current--;
@@ -266,10 +258,10 @@ public class CertificatehelperWindow {
         this.panels[this.current].setVisible(true);
         this.panels[this.current].setPreferredSize(this.center.getSize());
         this.last = this.panels[this.current];
-        this.btnBack.setEnabled(this.current != 0);
-        this.btnNext.setEnabled(this.current != 5);
+        this.btnBack.setText(this.current == 0 ? "Home" : "Zurück");
+        this.btnNext.setText(this.current == 5 ? "Home" : "Weiter");
         this.progressBar.setValue(this.current + 1);
-        this.frame.revalidate();
+        revalidate();
     }
 
 }
