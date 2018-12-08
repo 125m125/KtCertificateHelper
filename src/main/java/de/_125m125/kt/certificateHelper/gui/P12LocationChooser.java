@@ -21,11 +21,12 @@ public class P12LocationChooser extends JPanel {
     /**
      * Create the panel.
      */
-    public P12LocationChooser() {
+    public P12LocationChooser(final boolean save) {
         setLayout(new FormLayout(
                 new ColumnSpec[] { FormSpecs.DEFAULT_COLSPEC, ColumnSpec.decode("default:grow"),
                         FormSpecs.DEFAULT_COLSPEC, },
-                new RowSpec[] { FormSpecs.DEFAULT_ROWSPEC, FormSpecs.LINE_GAP_ROWSPEC, FormSpecs.DEFAULT_ROWSPEC, }));
+                new RowSpec[] { FormSpecs.DEFAULT_ROWSPEC, FormSpecs.LINE_GAP_ROWSPEC,
+                        FormSpecs.DEFAULT_ROWSPEC, }));
 
         final JLabel lblInfo = new JLabel("Speicherort");
         add(lblInfo, "1, 1, fill, fill");
@@ -40,7 +41,12 @@ public class P12LocationChooser extends JPanel {
         btnSelect.addActionListener(e -> {
             final JFileChooser chooser = new JFileChooser(this.txtLocation.getText());
             chooser.setSelectedFile(new File(this.txtLocation.getText()));
-            final int s = chooser.showSaveDialog(this);
+            final int s;
+            if (save) {
+                s = chooser.showSaveDialog(this);
+            } else {
+                s = chooser.showOpenDialog(this);
+            }
             if (s == JFileChooser.APPROVE_OPTION) {
                 this.txtLocation.setText(chooser.getSelectedFile().getAbsolutePath());
             }

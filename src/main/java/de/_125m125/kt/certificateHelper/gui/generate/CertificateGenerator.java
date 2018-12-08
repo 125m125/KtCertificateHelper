@@ -36,8 +36,8 @@ import de._125m125.kt.certificateHelper.gui.P12LocationChooser;
 public class CertificateGenerator extends JPanel {
 
     private int                     current     = -1;
-    private final JPanel[]          panels      = { new ModeSelection(), new ApiPermissions(), new CsrPresenter(),
-            new CrtAccepter(), new P12LocationChooser(), new Success(), };
+    private final JPanel[]          panels      = { new ModeSelection(), new ApiPermissions(),
+            new CsrPresenter(), new CrtAccepter(), new P12LocationChooser(true), new Success(), };
     boolean                         changedCsr  = true;
     boolean                         changedP12  = true;
     private JPanel                  last        = null;
@@ -120,24 +120,27 @@ public class CertificateGenerator extends JPanel {
                     if (this.keyPair == null) {
                         this.keyPair = this.helper.generatekeyPair();
                     }
-                    ((CsrPresenter) this.panels[2]).getTxtpnCsr().setText(
-                            this.helper.generateCsr(this.keyPair, this.certName, this.userid, this.permissions));
+                    ((CsrPresenter) this.panels[2]).getTxtpnCsr().setText(this.helper.generateCsr(
+                            this.keyPair, this.certName, this.userid, this.permissions));
                     this.changedCsr = false;
                 } catch (NoSuchAlgorithmException | OperatorCreationException | IOException e1) {
                     e1.printStackTrace();
-                    JOptionPane.showMessageDialog(null, "CSR-Generierung ist fehlgeschlagen: " + e1.getMessage(),
-                            "Fehler", JOptionPane.ERROR_MESSAGE);
+                    JOptionPane.showMessageDialog(null,
+                            "CSR-Generierung ist fehlgeschlagen: " + e1.getMessage(), "Fehler",
+                            JOptionPane.ERROR_MESSAGE);
                 }
             }
         }
         if (this.current == 5) {
             if (this.changedP12) {
                 try {
-                    this.helper.createPKCS12File(this.file, this.keyPair.getPrivate(), this.crt, this.password);
-                } catch (NoSuchAlgorithmException | KeyStoreException | CertificateException | IOException
-                        | PKCSException e1) {
+                    this.helper.createPKCS12File(this.file, this.keyPair.getPrivate(), this.crt,
+                            this.password);
+                } catch (NoSuchAlgorithmException | KeyStoreException | CertificateException
+                        | IOException | PKCSException e1) {
                     e1.printStackTrace();
-                    JOptionPane.showMessageDialog(null, "Speichern ist fehlgeschlagen: " + e1.getMessage(), "Fehler",
+                    JOptionPane.showMessageDialog(null,
+                            "Speichern ist fehlgeschlagen: " + e1.getMessage(), "Fehler",
                             JOptionPane.ERROR_MESSAGE);
                 }
             }
@@ -199,8 +202,9 @@ public class CertificateGenerator extends JPanel {
             }
             return true;
         case 1:
-            final Set<Permission> selectedPermissions = ((ApiPermissions) this.panels[1]).getCheckboxMap().entrySet()
-                    .stream().filter(e -> e.getKey().isSelected()).map(Entry::getValue).collect(Collectors.toSet());
+            final Set<Permission> selectedPermissions = ((ApiPermissions) this.panels[1])
+                    .getCheckboxMap().entrySet().stream().filter(e -> e.getKey().isSelected())
+                    .map(Entry::getValue).collect(Collectors.toSet());
             if (selectedPermissions.isEmpty()) {
                 return false;
             }
@@ -216,23 +220,28 @@ public class CertificateGenerator extends JPanel {
             if (text.equals(this.crtText)) {
                 return true;
             }
-            try (final Reader reader = new StringReader(text); PEMParser parser = new PEMParser(reader)) {
+            try (final Reader reader = new StringReader(text);
+                    PEMParser parser = new PEMParser(reader)) {
                 final Object readObject = parser.readObject();
                 if (readObject instanceof X509CertificateHolder) {
-                    this.crt = new JcaX509CertificateConverter().getCertificate((X509CertificateHolder) readObject);
+                    this.crt = new JcaX509CertificateConverter()
+                            .getCertificate((X509CertificateHolder) readObject);
                     this.crtText = text;
                     this.changedP12 = true;
                     return true;
                 } else {
-                    JOptionPane.showMessageDialog(null, "Ungültiges Zertifikat", "Fehler", JOptionPane.ERROR_MESSAGE);
+                    JOptionPane.showMessageDialog(null, "Ungültiges Zertifikat", "Fehler",
+                            JOptionPane.ERROR_MESSAGE);
                     return false;
                 }
             } catch (IOException | CertificateException e1) {
-                JOptionPane.showMessageDialog(null, "Ungültiges Zertifikat", "Fehler", JOptionPane.ERROR_MESSAGE);
+                JOptionPane.showMessageDialog(null, "Ungültiges Zertifikat", "Fehler",
+                        JOptionPane.ERROR_MESSAGE);
                 return false;
             }
         case 4:
-            final char[] password2 = ((P12LocationChooser) this.panels[4]).getTxtPassword().getPassword();
+            final char[] password2 = ((P12LocationChooser) this.panels[4]).getTxtPassword()
+                    .getPassword();
             if (!Arrays.equals(password2, this.password)) {
                 this.password = password2;
                 this.changedP12 = true;
