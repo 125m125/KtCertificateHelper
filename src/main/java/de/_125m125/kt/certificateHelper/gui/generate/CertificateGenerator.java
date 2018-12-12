@@ -175,6 +175,9 @@ public class CertificateGenerator extends JPanel {
                     this.permissions = new HashSet<>();
                     this.permissions.add(Permission.TWO_FA_PERMISSION);
                 } else {
+                    JOptionPane.showMessageDialog(this,
+                            "Der Zertifikatstyp muss ausgewählt werden.", "Unvollständige Eingabe",
+                            JOptionPane.ERROR_MESSAGE);
                     return false;
                 }
                 if (m != this.mode) {
@@ -183,15 +186,18 @@ public class CertificateGenerator extends JPanel {
                 }
                 final String i = ((ModeSelection) this.panels[0]).getTxtUserid().getText();
                 if (i.isEmpty()) {
+                    JOptionPane.showMessageDialog(this,
+                            "Die BenutzerID muss angegeben werden. Sie kann in den Einstellungen auf Kadcontrade gefunden werden.",
+                            "Unvollständige Eingabe", JOptionPane.ERROR_MESSAGE);
                     return false;
                 }
                 if (!i.equals(this.userid)) {
                     this.userid = i;
                     this.changedCsr = true;
                 }
-                final String n = ((ModeSelection) this.panels[0]).getTxtName().getText();
+                String n = ((ModeSelection) this.panels[0]).getTxtName().getText();
                 if (n.isEmpty()) {
-                    return false;
+                    n = "certificate";
                 }
                 if (!n.equals(this.certName)) {
                     this.certName = n;
@@ -206,6 +212,9 @@ public class CertificateGenerator extends JPanel {
                     .getCheckboxMap().entrySet().stream().filter(e -> e.getKey().isSelected())
                     .map(Entry::getValue).collect(Collectors.toSet());
             if (selectedPermissions.isEmpty()) {
+                JOptionPane.showMessageDialog(this,
+                        "Ess muss mindestens eine Berechtigung ausgewählt werden.",
+                        "Unvollständige Eingabe", JOptionPane.ERROR_MESSAGE);
                 return false;
             }
             if (!selectedPermissions.equals(this.permissions)) {

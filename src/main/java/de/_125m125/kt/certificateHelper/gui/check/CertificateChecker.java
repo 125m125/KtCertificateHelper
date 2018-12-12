@@ -12,6 +12,8 @@ import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
+import java.security.cert.CertificateExpiredException;
+import java.security.cert.CertificateNotYetValidException;
 import java.security.cert.X509Certificate;
 import java.util.Arrays;
 import java.util.Enumeration;
@@ -20,6 +22,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import javax.swing.JButton;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JProgressBar;
 
@@ -29,6 +32,7 @@ import org.bouncycastle.asn1.x500.style.IETFUtils;
 import org.bouncycastle.asn1.x509.ExtendedKeyUsage;
 import org.bouncycastle.asn1.x509.Extension;
 import org.bouncycastle.asn1.x509.KeyPurposeId;
+import org.bouncycastle.cert.X509CertificateHolder;
 import org.bouncycastle.cert.jcajce.JcaX509CertificateHolder;
 
 import de._125m125.kt.certificateHelper.Permission;
@@ -115,71 +119,96 @@ public class CertificateChecker extends JPanel {
                     }
                     final JcaX509CertificateHolder jcaX509CertificateHolder = new JcaX509CertificateHolder(
                             (X509Certificate) certificate);
-                    final RDN[] rdn = jcaX509CertificateHolder.getSubject().getRDNs(BCStyle.UID);
-                    if (rdn.length != 1 || rdn[0].isMultiValued()) {
+                    final String uid = extractUid(jcaX509CertificateHolder);
+                    if (uid == null) {
                         continue;
                     }
-                    final String uid = IETFUtils.valueToString(rdn[0].getFirst().getValue());
-                    final Extension ext = jcaX509CertificateHolder
-                            .getExtension(Extension.extendedKeyUsage);
-                    if (ext == null) {
-                        continue;
-                    }
-                    final ExtendedKeyUsage extKey = ExtendedKeyUsage
-                            .getInstance(ext.getParsedValue());
-                    final Set<Permission> permissions = Arrays.stream(extKey.getUsages())
-                            .map(KeyPurposeId::getId).map(Permission::ofOID)
-                            .filter(Objects::nonNull).collect(Collectors.toSet());
-                    if (permissions.isEmpty()) {
+                    final Set<Permission> permissions = extractPermissions(
+                            jcaX509CertificateHolder);
+                    if (permissions == null || permissions.isEmpty()) {
                         continue;
                     }
                     ((CertificateInspectionResult) this.panels[1]).setSerialNr(
                             ((X509Certificate) certificate).getSerialNumber().toString());
-                    ((CertificateInspectionResult) this.panels[1]).setServerStatus(null);
-                    if (!permissions.contains(Permission.TWO_FA_PERMISSION)) {
-                        final CertificateUser user = new CertificateUser(uid, file, password);
-                        final KtUserStore store = new KtUserStore(user);
-                        final SingleUserKtRequester<CertificateUserKey> requester = KtRetrofit
-                                .createClientCertificateRequester(store, user.getKey(), null);
-
-                        requester.getPermissions().addCallback(new Callback<Permissions>() {
-                            @Override
-                            public void onSuccess(final int status, final Permissions result) {
-                                ((CertificateInspectionResult) CertificateChecker.this.panels[1])
-                                        .setServerStatus(true);
-                            }
-
-                            @Override
-                            public void onFailure(final int status, final String message,
-                                    final String humanReadableMessage) {
-                                System.out.println(status + " " + humanReadableMessage);
-                                ((CertificateInspectionResult) CertificateChecker.this.panels[1])
-                                        .setServerStatus(false);
-
-                            }
-
-                            @Override
-                            public void onError(final Throwable t) {
-                                t.printStackTrace();
-                                ((CertificateInspectionResult) CertificateChecker.this.panels[1])
-                                        .setServerStatus(false);
-
-                            }
-                        });
-                    }
+                    checkValidity(password, file, uid, permissions, (X509Certificate) certificate);
                     ((CertificateInspectionResult) this.panels[1]).setPermissions(permissions);
                     return true;
                 }
             } catch (final FileNotFoundException e) {
-                e.printStackTrace();
+                JOptionPane.showMessageDialog(this,
+                        "Das Zertifikat konnte am angegebenen Pfad nicht gefunden werden.",
+                        "Zertifikat nicht gefunden", JOptionPane.ERROR_MESSAGE);
             } catch (final IOException | NoSuchAlgorithmException | CertificateException
                     | KeyStoreException e) {
-                e.printStackTrace();
+                JOptionPane.showMessageDialog(this,
+                        "Das Passwort ist falsch oder das Zertifikat konnte nicht gelesen werden.",
+                        "Fehler im Zertifikat", JOptionPane.ERROR_MESSAGE);
             }
             return false;
         default:
             return false;
         }
+    }
+
+    private void checkValidity(final char[] password, final File file, final String uid,
+            final Set<Permission> permissions, final X509Certificate certificate) {
+        try {
+            certificate.checkValidity();
+        } catch (CertificateExpiredException | CertificateNotYetValidException e) {
+            ((CertificateInspectionResult) this.panels[1]).setServerStatus(false);
+            return;
+        }
+        ((CertificateInspectionResult) this.panels[1]).setServerStatus(null);
+        if (!permissions.contains(Permission.TWO_FA_PERMISSION)) {
+            final CertificateUser user = new CertificateUser(uid, file, password);
+            final KtUserStore store = new KtUserStore(user);
+            final SingleUserKtRequester<CertificateUserKey> requester = KtRetrofit
+                    .createClientCertificateRequester(store, user.getKey(), null);
+
+            requester.getPermissions().addCallback(new Callback<Permissions>() {
+                @Override
+                public void onSuccess(final int status, final Permissions result) {
+                    ((CertificateInspectionResult) CertificateChecker.this.panels[1])
+                            .setServerStatus(true);
+                }
+
+                @Override
+                public void onFailure(final int status, final String message,
+                        final String humanReadableMessage) {
+                    System.out.println(status + " " + humanReadableMessage);
+                    ((CertificateInspectionResult) CertificateChecker.this.panels[1])
+                            .setServerStatus(false);
+
+                }
+
+                @Override
+                public void onError(final Throwable t) {
+                    t.printStackTrace();
+                    ((CertificateInspectionResult) CertificateChecker.this.panels[1])
+                            .setServerStatus(false);
+
+                }
+            });
+        }
+    }
+
+    private Set<Permission> extractPermissions(
+            final JcaX509CertificateHolder jcaX509CertificateHolder) {
+        final Extension ext = jcaX509CertificateHolder.getExtension(Extension.extendedKeyUsage);
+        if (ext == null) {
+            return null;
+        }
+        final ExtendedKeyUsage extKey = ExtendedKeyUsage.getInstance(ext.getParsedValue());
+        return Arrays.stream(extKey.getUsages()).map(KeyPurposeId::getId).map(Permission::ofOID)
+                .filter(Objects::nonNull).collect(Collectors.toSet());
+    }
+
+    private String extractUid(final X509CertificateHolder jcaX509CertificateHolder) {
+        final RDN[] rdn = jcaX509CertificateHolder.getSubject().getRDNs(BCStyle.UID);
+        if (rdn.length != 1 || rdn[0].isMultiValued()) {
+            return null;
+        }
+        return IETFUtils.valueToString(rdn[0].getFirst().getValue());
     }
 
     public void next(final ActionEvent e) {
