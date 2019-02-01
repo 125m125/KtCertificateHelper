@@ -69,7 +69,6 @@ public class CertificateHelper {
     }
 
     public void home() {
-        System.out.println("home...");
         this.frame.getContentPane().removeAll();
         this.frame.getContentPane().add(this.selectionpanel, BorderLayout.CENTER);
         this.frame.revalidate();
